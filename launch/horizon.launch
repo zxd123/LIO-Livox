@@ -11,13 +11,17 @@
         <!-- Voxel Filter Size Use to Downsize Map Cloud -->
         <param name="filter_parameter_corner" type="double" value="0.2" />
         <param name="filter_parameter_surf" type="double" value="0.4" />
+        <!-- Save path Parameter of odometry -->
+        <param name="save_path" value="$(arg save_path)" />
         <!-- Extrinsic Parameter between Lidar & IMU -->
         <rosparam param="Extrinsic_Tlb"> [1.0, 0.0, 0.0, -0.05512,
                                           0.0, 1.0, 0.0, -0.02226,
                                           0.0, 0.0, 1.0,  0.0297,
                                           0.0, 0.0, 0.0,  1.0]</rosparam>
+
     </node>
 
     <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find lio_livox)/rviz_cfg/lio.rviz" />
+    <!-- <node pkg="rosbag" type="play" name="player" output="screen" required="True" args="$(arg bag_param)"/> -->
 
 </launch>

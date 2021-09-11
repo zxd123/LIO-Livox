@@ -94,6 +94,7 @@ int PCSeg::DoSeg(int *pLabel1, float* fPoints1, int pointNum)
     int *idtrans3=(int*)calloc(agnum,sizeof(int));
     int *pLabel2=(int*)calloc(pntNum,sizeof(int));
     int agcnt=0;//非地面点数量
+    int gcnt=0;//地面点数量
     for(int ii=0;ii<pntNum;ii++)
     {
         if(pLabelGnd[ii]==0) //上一步地面标记为1，非地面标记为0
@@ -108,10 +109,10 @@ int PCSeg::DoSeg(int *pLabel1, float* fPoints1, int pointNum)
         else
         {
             pLabel2[ii] = 0; //地面为1
+            gcnt++;
         }
-        
     }
-  
+    // std::cout << "pointNum = " << pointNum << " gcnt = " << gcnt << " gnum = " << gnum << std::endl;
     int *pLabelAg=(int*)calloc(agnum,sizeof(int));
     if (agnum != 0)
     {

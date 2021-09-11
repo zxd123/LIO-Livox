@@ -1,4 +1,7 @@
 #include "Estimator/Estimator.h"
+#include <fstream>
+#include <memory>
+#include <string>
 typedef pcl::PointXYZINormal PointType;
 
 int WINDOWSIZE;
@@ -35,6 +38,10 @@ double startTime = 0;
 
 nav_msgs::Path laserOdoPath;
 
+// save odometry
+std::string save_path;
+std::shared_ptr<std::ofstream> odo;
+
 /** \brief publish odometry infomation
   * \param[in] newPose: pose to be published
   * \param[in] timefullCloud: time stamp
@@ -56,7 +63,18 @@ void pubOdometry(const Eigen::Matrix4d& newPose, double& timefullCloud){
   laserOdometry.pose.pose.position.y = newPosition.y();
   laserOdometry.pose.pose.position.z = newPosition.z();
   pubLaserOdometry.publish(laserOdometry);
-
+  // saveodometry
+  if (LidarIMUInited) {
+    Eigen::Vector3d gr;
+    gr.segment<2>(0) = newQuat.toRotationMatrix().block<2, 1>(0, 2);
+    gr[2] = newPosition[2];
+    *odo //<< std::setw(20) 
+        << laserOdometry.header.stamp << " " 
+        // << newPosition.x() << " " << newPosition.y() << " " << newPosition.z() << " "
+        << gr[0] << "" << gr[1] << " " << " " << gr[2] << " "
+        << 0 << " " << 0 << " " << 0 << " " << 1
+        << std::endl;
+  }
   geometry_msgs::PoseStamped laserPose;
   laserPose.header = laserOdometry.header;
   laserPose.pose = laserOdometry.pose.pose;
@@ -505,8 +523,11 @@ void process(){
       laserCloudAfterEstimate->reserve(laserCloudFullResNum);
       for (int i = 0; i < laserCloudFullResNum; i++) {
         PointType temp_point;
-        MAP_MANAGER::pointAssociateToMap(&lidar_list->front().laserCloud->points[i], &temp_point, transformTobeMapped);
-        laserCloudAfterEstimate->push_back(temp_point);
+        auto &p = lidar_list->front().laserCloud->points[i];
+        if (std::fabs(p.normal_y + 1.0) < 1e-5) {
+          MAP_MANAGER::pointAssociateToMap(&lidar_list->front().laserCloud->points[i], &temp_point, transformTobeMapped);
+          laserCloudAfterEstimate->push_back(temp_point);
+        }
       }
       sensor_msgs::PointCloud2 laserCloudMsg;
       pcl::toROSMsg(*laserCloudAfterEstimate, laserCloudMsg);
@@ -575,7 +596,7 @@ int main(int argc, char** argv)
   ros::param::get("~IMU_Mode",IMU_Mode);
 	std::vector<double> vecTlb;
 	ros::param::get("~Extrinsic_Tlb",vecTlb);
-
+  ros::param::get("~save_path",save_path);
   // set extrinsic matrix between lidar & IMU
   Eigen::Matrix3d R;
   Eigen::Vector3d t;
@@ -611,10 +632,10 @@ int main(int argc, char** argv)
   laserCloudFullRes.reset(new pcl::PointCloud<PointType>);
   estimator = new Estimator(filter_parameter_corner, filter_parameter_surf);
 	lidarFrameList.reset(new std::list<Estimator::LidarFrame>);
-
+  odo.reset(new std::ofstream(save_path));
   std::thread thread_process{process};
   ros::spin();
-
+  std::cout << "finished" << std::endl;
   return 0;
 }
 

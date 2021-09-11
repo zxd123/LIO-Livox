@@ -995,6 +995,11 @@ void Estimator::Estimate(std::list<LidarFrame>& lidarFrameList,
     for(int i=0; i<windowSize; ++i)
       problem.AddParameterBlock(para_VBias[i], 9);
 
+    // add Ground CostFunction
+    for(int f=0; f<windowSize; ++f) {
+      problem.AddResidualBlock(Cost_NavState_PR_Ground::Create(), nullptr, para_PR[f]);
+    }
+
     // add IMU CostFunction
     for(int f=1; f<windowSize; ++f){
       auto frame_curr = lidarFrameList.begin();
@@ -1072,6 +1077,7 @@ void Estimator::Estimate(std::list<LidarFrame>& lidarFrameList,
       if(iterOpt == 0){
         for(int f=0; f<windowSize; ++f){
           int cntFtu = 0;
+          // std::cout << "edgesLine[f].size = " << edgesLine[f].size() << std::endl;
           for (auto &e : edgesLine[f]) {
             if(std::fabs(vLineFeatures[f][cntFtu].error) > 1e-5){
               problem.AddResidualBlock(e, loss_function, para_PR[f]);
@@ -1084,6 +1090,7 @@ void Estimator::Estimate(std::list<LidarFrame>& lidarFrameList,
           }
 
           cntFtu = 0;
+          // std::cout << "edgesPlan[f]" << edgesPlan[f].size() << std::endl;
           for (auto &e : edgesPlan[f]) {
             if(std::fabs(vPlanFeatures[f][cntFtu].error) > 1e-5){
               problem.AddResidualBlock(e, loss_function, para_PR[f]);
@@ -1229,6 +1236,13 @@ void Estimator::Estimate(std::list<LidarFrame>& lidarFrameList,
                                                         std::vector<double *>{para_PR[0], para_VBias[0], para_PR[1], para_VBias[1]},
                                                         std::vector<int>{0, 1});
       marginalization_info->addResidualBlockInfo(residual_block_info);
+
+      // marginalize the Ground constraint
+      ceres::CostFunction* Ground_Cost = Cost_NavState_PR_Ground::Create();
+      auto *ground_residual_block_info = new ResidualBlockInfo(Ground_Cost, nullptr, 
+                                                        std::vector<double *>{para_PR[0]},
+                                                        std::vector<int>{0});
+      marginalization_info->addResidualBlockInfo(ground_residual_block_info);     
 
       int f = 0;
       transformTobeMapped = Eigen::Matrix4d::Identity();

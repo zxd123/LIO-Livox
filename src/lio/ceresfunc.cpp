@@ -28,4 +28,5 @@ void* ThreadsConstructA(void* threadsstruct)
   }
   return threadsstruct;
 }
-
+Eigen::Vector3d sqrt_information_vec(0.0003, 0.0003, 0.02); //0.0003, 0.0003, 0.02
+Eigen::Matrix<double, 3, 3> Cost_NavState_PR_Ground::sqrt_information = sqrt_information_vec.asDiagonal().inverse();

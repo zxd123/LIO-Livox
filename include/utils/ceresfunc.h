@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include "sophus/so3.hpp"
 #include "IMUIntegrator/IMUIntegrator.h"
-
+#include "math_utils.hpp"
 const int NUM_THREADS = 4;
 
 /** \brief Residual Block Used for marginalization
@@ -317,6 +317,47 @@ public:
 	MarginalizationInfo* marginalization_info;
 };
 
+/** \brief Ceres Cost Funtion between Lidar Pose and Ground
+ */
+struct Cost_NavState_PR_Ground
+{
+	Cost_NavState_PR_Ground() {
+		// std::cout << sqrt_information << std::endl;
+	}
+
+	template <typename T>
+	bool operator()( const T *pri_, T *residual) const {
+		Eigen::Map<const Eigen::Matrix<T, 6, 1>> PRi(pri_);
+		Eigen::Matrix<T, 3, 1> Pi = PRi.template segment<3>(0);
+		Sophus::SO3<T> SO3_Ri = Sophus::SO3<T>::exp(PRi.template segment<3>(3));
+		Eigen::Map<Eigen::Matrix<T, 3, 1> > eResiduals(residual);
+		eResiduals = Eigen::Matrix<T, 3, 1>::Zero();
+
+		Eigen::Matrix<T, 2, 1> rR_i_Ground = SO3_Ri.matrix().template block<2, 1>(0, 2);
+		Eigen::Matrix<T, 3, 1> euler_angles;
+		livox_slam_ware::R2ypr(SO3_Ri.matrix(), euler_angles);
+		Eigen::Matrix<T, 1, 1> rP_i_Ground = PRi.template segment<1>(2);
+		eResiduals.template segment<2>(0) = euler_angles.template segment<2>(1);
+		eResiduals.template segment<1>(2) = rP_i_Ground;
+
+		eResiduals.applyOnTheLeft(sqrt_information.template cast<T>());
+		// std::cout << "ground eResiduals = " << std::endl << eResiduals[0] << std::endl << eResiduals[1] << std::endl;
+	    // static long long count = 0;
+	    // if (count % 300 == 0) {
+		//     std::cout << "ground eResiduals = " << std::endl << eResiduals << std::endl << std::endl;
+		//     count = 0;
+	    // }
+	    // count++;
+		return true;
+	}
+
+	static ceres::CostFunction *Create() {
+		return (new ceres::AutoDiffCostFunction<Cost_NavState_PR_Ground, 3, 6>(
+						new Cost_NavState_PR_Ground()));
+	}
+	static Eigen::Matrix<double, 3, 3> sqrt_information;
+};
+
 /** \brief Ceres Cost Funtion between Lidar Pose and IMU Preintegration
  */
 struct Cost_NavState_PRV_Bias
@@ -375,7 +416,9 @@ struct Cost_NavState_PRV_Bias
 		eResiduals.template segment<6>(9) = velobiasj.template segment<6>(3) - velobiasi.template segment<6>(3);
 
 		eResiduals.applyOnTheLeft(sqrt_information.template cast<T>());
-
+		// static long long count = 0;
+		// if (count % 300 == 0) std::cout << "IMU eResiduals = " << std::endl << eResiduals << std::endl;
+		// count++;
 		return true;
 	}
 
@@ -436,7 +479,12 @@ struct Cost_NavState_IMU_Line
                            P_to_Map(1) * P_to_Map(1) +
                            P_to_Map(2) * P_to_Map(2) ));
       residual[0] = T(sqrt_information(0)) * _weight * ld2;
-
+	//   static long long count = 0;
+	//   if (count % 30000 == 0) {
+	// 	  std::cout << "lidarline eResiduals = " << std::endl << residual[0] << std::endl << std::endl;
+	// 	  count = 0;
+	//   }
+	//   count++;
       return true;
     }
 
@@ -490,6 +538,13 @@ struct Cost_NavState_IMU_Plan
                            P_to_Map(1) * P_to_Map(1) +
                            P_to_Map(2) * P_to_Map(2) ));
       residual[0] = T(sqrt_information(0)) * _weight * pd2;
+
+	//   static long long count = 0;
+	//   if (count % 30000 == 0) {
+	// 	  std::cout << "lidarplane eResiduals = " << std::endl << residual[0] << std::endl << std::endl;
+	// 	  count = 0;
+	//   }
+	//   count++;
 
       return true;
     }
@@ -551,6 +606,13 @@ struct Cost_NavState_IMU_Plan_Vec
                            P_to_Map(2) * P_to_Map(2) ));
 	  eResiduals *= _weight;
 	  eResiduals.applyOnTheLeft(sqrt_information.template cast<T>());
+
+	//   static long long count = 0;
+	//   if (count % 30000 == 0) {
+	// 	  std::cout << "lidarplane eResiduals = " << std::endl << residual[0] << std::endl << std::endl;
+	// 	  count = 0;
+	//   }
+	//   count++;
 
       return true;
     }

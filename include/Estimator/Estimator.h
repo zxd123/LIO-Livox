@@ -25,7 +25,7 @@ class Estimator{
 	typedef pcl::PointXYZINormal PointType;
 public:
 	/** \brief slide window size */
-	static const int SLIDEWINDOWSIZE = 2;
+	static const int SLIDEWINDOWSIZE = 10;
 
 	/** \brief lidar frame struct */
 	struct LidarFrame{

@@ -645,7 +645,11 @@ void LidarFeatureExtractor::FeatureExtract_with_segment(const livox_ros_driver::
 
   PCSeg pcseg;
   pcseg.DoSeg(idtrans,data,dnum);
-
+  int estimate_gnd_count = 0;
+  // for (int i = 0; i < dnum; i++) {
+  //   if (idtrans[i] == 0) estimate_gnd_count++;
+  // }
+  // std::cout << "dnum = " << dnum << " point_num = " << point_num << std::endl;
   std::size_t cloud_num = laserCloud->size();
   for(std::size_t i=0; i<cloud_num; ++i){
     int line_idx = _float_as_int(laserCloud->points[i].normal_y);
@@ -678,6 +682,9 @@ void LidarFeatureExtractor::FeatureExtract_with_segment(const livox_ros_driver::
                 + laserCloud->points[i].z * laserCloud->points[i].z;
     if( idtrans[i] > 9 && dis < 50*50){
       laserCloud->points[i].normal_z = 0;
+    }
+    if (idtrans[i] == 0) {
+      laserCloud->points[i].normal_y = -1.0;
     }
   }
 
