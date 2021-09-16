@@ -216,6 +216,10 @@ public:
 	pcl::PointCloud<PointType>::Ptr get_nonfeature_map(){
 		return map_manager->get_nonfeature_map();
 	}
+	pcl::PointCloud<PointType>::Ptr get_init_ground_cloud(){
+		return initGroundCloud;
+	}
+
 	void MapIncrementLocal(const pcl::PointCloud<PointType>::Ptr& laserCloudCornerStack,
 						   const pcl::PointCloud<PointType>::Ptr& laserCloudSurfStack,
 						   const pcl::PointCloud<PointType>::Ptr& laserCloudNonFeatureStack,
@@ -224,6 +228,8 @@ public:
 private:
 	/** \brief store map points */
 	MAP_MANAGER* map_manager;
+
+	int init_ground_count;
 
 	double para_PR[SLIDEWINDOWSIZE][6];
 	double para_VBias[SLIDEWINDOWSIZE][9];
@@ -239,6 +245,7 @@ private:
 	pcl::PointCloud<PointType>::Ptr laserCloudCornerForMap;
 	pcl::PointCloud<PointType>::Ptr laserCloudSurfForMap;
 	pcl::PointCloud<PointType>::Ptr laserCloudNonFeatureForMap;
+	pcl::PointCloud<PointType>::Ptr initGroundCloud;
 	Eigen::Matrix4d transformForMap;
 	std::vector<pcl::PointCloud<PointType>::Ptr> laserCloudCornerStack;
 	std::vector<pcl::PointCloud<PointType>::Ptr> laserCloudSurfStack;

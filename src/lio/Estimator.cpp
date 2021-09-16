@@ -4,6 +4,10 @@ Estimator::Estimator(const float& filter_corner, const float& filter_surf){
   laserCloudCornerFromLocal.reset(new pcl::PointCloud<PointType>);
   laserCloudSurfFromLocal.reset(new pcl::PointCloud<PointType>);
   laserCloudNonFeatureFromLocal.reset(new pcl::PointCloud<PointType>);
+  // 初始化起始地面点云
+  initGroundCloud.reset(new pcl::PointCloud<PointType>);
+  init_ground_count = 0;
+
   laserCloudCornerLast.resize(SLIDEWINDOWSIZE);
   for(auto& p:laserCloudCornerLast)
     p.reset(new pcl::PointCloud<PointType>);
@@ -878,7 +882,6 @@ void Estimator::EstimateLidarPose(std::list<LidarFrame>& lidarFrameList,
       if(std::fabs(p.normal_z - 3.0) < 1e-5)
         laserCloudNonFeatureLast[stack_count]->push_back(p);
     }
-
     laserCloudCornerStack[stack_count]->clear();
     downSizeFilterCorner.setInputCloud(laserCloudCornerLast[stack_count]);
     downSizeFilterCorner.filter(*laserCloudCornerStack[stack_count]);
@@ -900,6 +903,22 @@ void Estimator::EstimateLidarPose(std::list<LidarFrame>& lidarFrameList,
   transformTobeMapped = Eigen::Matrix4d::Identity();
   transformTobeMapped.topLeftCorner(3,3) = lidarFrameList.front().Q * exRbl;
   transformTobeMapped.topRightCorner(3,1) = lidarFrameList.front().Q * exPbl + lidarFrameList.front().P;
+  // 如果地面点云不到十帧则进行添加
+  for(const auto& l : lidarFrameList) {
+    if (init_ground_count <= 10) {
+      PointType temp_point;
+      for(const auto& p : l.laserCloud->points){
+        if(std::fabs(p.normal_y + 1.0) < 1e-5) {
+          MAP_MANAGER::pointAssociateToMap(&p, &temp_point, transformTobeMapped);
+          initGroundCloud->push_back(temp_point);
+        }
+      }
+      init_ground_count++;
+      if (init_ground_count > 10) {
+        // 第一次超过十帧地面点云的时候，进行初始化的地面计算
+      }
+    }
+  }
 
   std::unique_lock<std::mutex> locker(mtx_Map);
   *laserCloudCornerForMap = *laserCloudCornerStack[0];

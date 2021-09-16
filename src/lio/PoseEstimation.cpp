@@ -521,14 +521,15 @@ void process(){
       int laserCloudFullResNum = lidar_list->front().laserCloud->points.size();
       pcl::PointCloud<PointType>::Ptr laserCloudAfterEstimate(new pcl::PointCloud<PointType>());
       laserCloudAfterEstimate->reserve(laserCloudFullResNum);
-      for (int i = 0; i < laserCloudFullResNum; i++) {
-        PointType temp_point;
-        auto &p = lidar_list->front().laserCloud->points[i];
-        if (std::fabs(p.normal_y + 1.0) < 1e-5) {
-          MAP_MANAGER::pointAssociateToMap(&lidar_list->front().laserCloud->points[i], &temp_point, transformTobeMapped);
-          laserCloudAfterEstimate->push_back(temp_point);
-        }
-      }
+      // for (int i = 0; i < laserCloudFullResNum; i++) {
+      //   PointType temp_point;
+      //   auto &p = lidar_list->front().laserCloud->points[i];
+      //   if (std::fabs(p.normal_y + 1.0) < 1e-5) {
+      //     MAP_MANAGER::pointAssociateToMap(&lidar_list->front().laserCloud->points[i], &temp_point, transformTobeMapped);
+      //     laserCloudAfterEstimate->push_back(temp_point);
+      //   }
+      // }
+      laserCloudAfterEstimate = estimator->get_init_ground_cloud();
       sensor_msgs::PointCloud2 laserCloudMsg;
       pcl::toROSMsg(*laserCloudAfterEstimate, laserCloudMsg);
       laserCloudMsg.header.frame_id = "/world";

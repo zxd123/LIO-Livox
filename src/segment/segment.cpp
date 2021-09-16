@@ -1157,7 +1157,7 @@ int GndSeg(int* pLabel,float *fPoints,int pointNum,float fSearchRadius)
     {
         if(pLabel[pid]==1)
         {
-            if(fPoints[pid*4]*fPoints[pid*4]+fPoints[pid*4+1]*fPoints[pid*4+1]<400 && fPoints[pid*4+2]>zMean+0.4)
+            if(fPoints[pid*4]*fPoints[pid*4]+fPoints[pid*4+1]*fPoints[pid*4+1]<400 && fPoints[pid*4+2]>zMean+0.1)
                 pLabel[pid]=0;
         }
     }
