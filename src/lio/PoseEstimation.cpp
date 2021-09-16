@@ -494,6 +494,10 @@ void process(){
 	    // remove lidar distortion
 	    RemoveLidarDistortion(laserCloudFullRes, delta_Rl, delta_tl);
 
+      // calculate the ground plane parameters
+      lidar_list->back().ground_plane_coeff = livox_slam_ware::get_plane_coeffs<PointType>(laserCloudFullRes);
+      std::cout << "ground_plane_coeff " << lidar_list->back().ground_plane_coeff.transpose() << std::endl;
+
       // optimize current lidar pose with IMU
       estimator->EstimateLidarPose(*lidar_list, exTlb, GravityVector, debugInfo);
 

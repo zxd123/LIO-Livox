@@ -49,6 +49,7 @@ void MAP_MANAGER::pointAssociateToMap(PointType const * const pi,
         po->z = pout.z();
         po->intensity = pi->intensity;
         po->normal_z = pi->normal_z;
+        po->normal_y = pi->normal_y;
       }
 void MAP_MANAGER::featureAssociateToMap(const pcl::PointCloud<PointType>::Ptr& laserCloudCorner,
                                         const pcl::PointCloud<PointType>::Ptr& laserCloudSurf,

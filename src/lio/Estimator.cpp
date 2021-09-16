@@ -916,10 +916,11 @@ void Estimator::EstimateLidarPose(std::list<LidarFrame>& lidarFrameList,
       init_ground_count++;
       if (init_ground_count > 10) {
         // 第一次超过十帧地面点云的时候，进行初始化的地面计算
+        init_ground_plane_coeff = livox_slam_ware::get_plane_coeffs<PointType>(initGroundCloud);
       }
     }
   }
-
+  // std::cout << "init_ground_plane_coeff " << init_ground_plane_coeff.transpose() << std::endl;
   std::unique_lock<std::mutex> locker(mtx_Map);
   *laserCloudCornerForMap = *laserCloudCornerStack[0];
   *laserCloudSurfForMap = *laserCloudSurfStack[0];

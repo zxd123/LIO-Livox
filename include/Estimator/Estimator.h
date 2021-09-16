@@ -18,6 +18,7 @@
 #include <future>
 #include "MapManager/Map_Manager.h"
 #include "utils/ceresfunc.h"
+#include "utils/pcl_utils.hpp"
 #include "IMUIntegrator/IMUIntegrator.h"
 #include <chrono>
 
@@ -36,6 +37,7 @@ public:
 		Eigen::Quaterniond Q;
 		Eigen::Vector3d bg;
 		Eigen::Vector3d ba;
+    Eigen::VectorXf ground_plane_coeff;
 		double timeStamp;
 		LidarFrame(){
 			P.setZero();
@@ -230,7 +232,7 @@ private:
 	MAP_MANAGER* map_manager;
 
 	int init_ground_count;
-
+  Eigen::VectorXf init_ground_plane_coeff;
 	double para_PR[SLIDEWINDOWSIZE][6];
 	double para_VBias[SLIDEWINDOWSIZE][9];
 	MarginalizationInfo *last_marginalization_info = nullptr;
