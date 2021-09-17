@@ -14,12 +14,10 @@ Eigen::VectorXf get_plane_coeffs (typename pcl::PointCloud<PointType>::Ptr lidar
   typename pcl::PointCloud<PointType>::Ptr ground_cloud;
   ground_cloud.reset(new pcl::PointCloud<PointType>);
   for(const auto& p : lidar_cloud->points){
-    // std::cout<<"p size in utils"<<p.normal_y<<std::endl;
     if(std::fabs(p.normal_y + 1.0) < 1e-5) {
       ground_cloud->push_back(p);
     }
   }
-  std::cout<<"ground_cloud size in utils = "<<ground_cloud->points.size()<<std::endl;
   typename pcl::SampleConsensusModelPlane<PointType>::Ptr model(
     new pcl::SampleConsensusModelPlane<PointType>(ground_cloud));//定义待拟合平面的model，并使用待拟合点云初始化
   pcl::RandomSampleConsensus<PointType> ransac(model);//定义RANSAC算法模型

@@ -189,6 +189,22 @@ void RemoveLidarDistortion(pcl::PointCloud<PointType>::Ptr& cloud,
     cloud->points[i].normal_x = 1.0;
   }
 }
+/** \brief Convert the lidar point cloud from the odometer to the ground coordinate system
+  * \param[in] cloud: lidar cloud need to be convert
+  * \param[in] Rgo: rotation from odometer to ground
+  */
+void ConvertPointCloudFromOdometerToGround(pcl::PointCloud<PointType>::Ptr& cloud, 
+                                           const Eigen::Matrix3f& Rgo){
+  int PointsNum = cloud->points.size();
+  for (int i = 0; i < PointsNum; i++) {
+    Eigen::Vector3f startP{cloud->points[i].x,cloud->points[i].y,cloud->points[i].z};
+    Eigen::Vector3f _po = Rgo * startP;
+    cloud->points[i].x = _po(0);
+    cloud->points[i].y = _po(1);
+    cloud->points[i].z = _po(2);
+    cloud->points[i].normal_x = 1.0;
+  }
+}
 
 
 bool TryMAPInitialization() {
@@ -494,9 +510,22 @@ void process(){
 	    // remove lidar distortion
 	    RemoveLidarDistortion(laserCloudFullRes, delta_Rl, delta_tl);
 
+      
+      static bool first_flag = true;
+      Eigen::Matrix3f Rgo;
+      if (first_flag) {
+        lidar_list->back().ground_plane_coeff = livox_slam_ware::get_plane_coeffs<PointType>(laserCloudFullRes);
+        Eigen::Vector3f v1 = lidar_list->back().ground_plane_coeff.head<3>();
+        Eigen::Vector3f v2{0,0,1};
+        Rgo = Eigen::Quaternionf::FromTwoVectors(v1,v2).toRotationMatrix();
+        std:: cout << "the vector after rotation is " << (Rgo * v1).transpose() << std::endl;
+        first_flag = false;
+      }
+      ConvertPointCloudFromOdometerToGround(laserCloudFullRes, Rgo);
       // calculate the ground plane parameters
-      lidar_list->back().ground_plane_coeff = livox_slam_ware::get_plane_coeffs<PointType>(laserCloudFullRes);
-      std::cout << "ground_plane_coeff " << lidar_list->back().ground_plane_coeff.transpose() << std::endl;
+      lidarFrame.ground_plane_coeff = livox_slam_ware::get_plane_coeffs<PointType>(laserCloudFullRes);
+      lidar_list->back().ground_plane_coeff = lidarFrame.ground_plane_coeff;
+      // std::cout << "ground_plane_coeff " << std::endl << lidar_list->back().ground_plane_coeff.transpose() << std::endl;
 
       // optimize current lidar pose with IMU
       estimator->EstimateLidarPose(*lidar_list, exTlb, GravityVector, debugInfo);
@@ -525,15 +554,15 @@ void process(){
       int laserCloudFullResNum = lidar_list->front().laserCloud->points.size();
       pcl::PointCloud<PointType>::Ptr laserCloudAfterEstimate(new pcl::PointCloud<PointType>());
       laserCloudAfterEstimate->reserve(laserCloudFullResNum);
-      // for (int i = 0; i < laserCloudFullResNum; i++) {
-      //   PointType temp_point;
-      //   auto &p = lidar_list->front().laserCloud->points[i];
-      //   if (std::fabs(p.normal_y + 1.0) < 1e-5) {
-      //     MAP_MANAGER::pointAssociateToMap(&lidar_list->front().laserCloud->points[i], &temp_point, transformTobeMapped);
-      //     laserCloudAfterEstimate->push_back(temp_point);
-      //   }
-      // }
-      laserCloudAfterEstimate = estimator->get_init_ground_cloud();
+      for (int i = 0; i < laserCloudFullResNum; i++) {
+        PointType temp_point;
+        auto &p = lidar_list->front().laserCloud->points[i];
+        if (std::fabs(p.normal_y + 1.0) < 1e-5) {
+          MAP_MANAGER::pointAssociateToMap(&lidar_list->front().laserCloud->points[i], &temp_point, transformTobeMapped);
+          laserCloudAfterEstimate->push_back(temp_point);
+        }
+      }
+      // laserCloudAfterEstimate = estimator->get_init_ground_cloud();
       sensor_msgs::PointCloud2 laserCloudMsg;
       pcl::toROSMsg(*laserCloudAfterEstimate, laserCloudMsg);
       laserCloudMsg.header.frame_id = "/world";

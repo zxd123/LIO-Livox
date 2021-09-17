@@ -917,10 +917,11 @@ void Estimator::EstimateLidarPose(std::list<LidarFrame>& lidarFrameList,
       if (init_ground_count > 10) {
         // 第一次超过十帧地面点云的时候，进行初始化的地面计算
         init_ground_plane_coeff = livox_slam_ware::get_plane_coeffs<PointType>(initGroundCloud);
+        Cost_NavState_PR_Ground::init_ground_plane_coeff = init_ground_plane_coeff;
       }
     }
   }
-  // std::cout << "init_ground_plane_coeff " << init_ground_plane_coeff.transpose() << std::endl;
+  // std::cout << "the size of init_ground_plane_coeff " << init_ground_plane_coeff.size() << std::endl;
   std::unique_lock<std::mutex> locker(mtx_Map);
   *laserCloudCornerForMap = *laserCloudCornerStack[0];
   *laserCloudSurfForMap = *laserCloudSurfStack[0];
@@ -1016,10 +1017,14 @@ void Estimator::Estimate(std::list<LidarFrame>& lidarFrameList,
       problem.AddParameterBlock(para_VBias[i], 9);
 
     // add Ground CostFunction
-    for(int f=0; f<windowSize; ++f) {
-      problem.AddResidualBlock(Cost_NavState_PR_Ground::Create(), nullptr, para_PR[f]);
+    if (init_ground_plane_coeff.size()) {
+      for(int f=0; f<windowSize; ++f) {
+        auto frame_curr = lidarFrameList.begin();
+        std::advance(frame_curr, f);
+        problem.AddResidualBlock(Cost_NavState_PR_Ground::Create(frame_curr->ground_plane_coeff), 
+                                 nullptr, para_PR[f]);
+      }
     }
-
     // add IMU CostFunction
     for(int f=1; f<windowSize; ++f){
       auto frame_curr = lidarFrameList.begin();
@@ -1258,11 +1263,13 @@ void Estimator::Estimate(std::list<LidarFrame>& lidarFrameList,
       marginalization_info->addResidualBlockInfo(residual_block_info);
 
       // marginalize the Ground constraint
-      ceres::CostFunction* Ground_Cost = Cost_NavState_PR_Ground::Create();
-      auto *ground_residual_block_info = new ResidualBlockInfo(Ground_Cost, nullptr, 
-                                                        std::vector<double *>{para_PR[0]},
-                                                        std::vector<int>{0});
-      marginalization_info->addResidualBlockInfo(ground_residual_block_info);     
+      if (init_ground_plane_coeff.size()) {
+        ceres::CostFunction* Ground_Cost = Cost_NavState_PR_Ground::Create(lidarFrameList.begin()->ground_plane_coeff);
+        auto *ground_residual_block_info = new ResidualBlockInfo(Ground_Cost, nullptr, 
+                                                          std::vector<double *>{para_PR[0]},
+                                                          std::vector<int>{0});
+        marginalization_info->addResidualBlockInfo(ground_residual_block_info);     
+      }
 
       int f = 0;
       transformTobeMapped = Eigen::Matrix4d::Identity();

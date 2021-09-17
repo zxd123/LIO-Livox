@@ -218,6 +218,24 @@ void R2ypr(const Eigen::Matrix<T, 3, 3>& R, Eigen::Matrix<T, 3, 1> &ypr) {
   ypr(1) = p;
   ypr(2) = r;
 }
+/*
+ * @brief Calculate the error between the two planes.
+ */
+
+template <typename T>
+Eigen::Matrix<T, 3, 1> ominus(const Eigen::Matrix<T, 4, 1>& ground_plane_coeff, Eigen::Matrix<T, 4, 1> &local_ground_plane) {
+  Eigen::Matrix<T, 3, 1> n_ground_plane_coeff = ground_plane_coeff.template segment<3>(0);
+  Eigen::Matrix<T, 3, 1> n_local_ground_plane = local_ground_plane.template segment<3>(0);
+  Eigen::Matrix<float, 3, 1> x(1, 0, 0);
+  Eigen::Matrix<T, 3, 1> normal_x = x.template cast<T>();
+  Eigen::Matrix<T, 3, 3> R = Eigen::Quaternion<T>::FromTwoVectors(n_local_ground_plane, normal_x).toRotationMatrix();
+  Eigen::Matrix<T, 3, 1> n_ground_plane_coeff_after_rotation = R * n_ground_plane_coeff;
+  Eigen::Matrix<T, 3, 1> result;
+  result(0) = atan2(n_ground_plane_coeff_after_rotation(1), n_ground_plane_coeff_after_rotation(0));
+  result(1) = atan2(n_ground_plane_coeff_after_rotation(2), n_ground_plane_coeff_after_rotation.template head<2>().norm());
+  result(2) = -local_ground_plane(3) + ground_plane_coeff(3);
+  return result;
+}
 } // end namespace livox_slam_ware
 
 #endif // MATH_UTILS_HPP

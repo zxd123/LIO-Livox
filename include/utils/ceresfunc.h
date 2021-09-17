@@ -321,8 +321,8 @@ public:
  */
 struct Cost_NavState_PR_Ground
 {
-	Cost_NavState_PR_Ground() {
-		// std::cout << sqrt_information << std::endl;
+	Cost_NavState_PR_Ground(Eigen::VectorXf ground_plane_coeff_):ground_plane_coeff(ground_plane_coeff_) {
+		// std::cout << ground_plane_coeff.transpose() << std::endl;
 	}
 
 	template <typename T>
@@ -333,29 +333,44 @@ struct Cost_NavState_PR_Ground
 		Eigen::Map<Eigen::Matrix<T, 3, 1> > eResiduals(residual);
 		eResiduals = Eigen::Matrix<T, 3, 1>::Zero();
 
-		Eigen::Matrix<T, 2, 1> rR_i_Ground = SO3_Ri.matrix().template block<2, 1>(0, 2);
+    Eigen::Matrix<T, 4, 4> T_wl = Eigen::Matrix<T, 4, 4>::Identity();
+    T_wl.topLeftCorner(3,3) = SO3_Ri.matrix();
+    T_wl.topRightCorner(3,1) = Pi;
+    Eigen::Matrix<T, 4, 4> T_lw = T_wl.inverse();
+    Eigen::Matrix<T, 3, 3> R_lw = T_lw.topLeftCorner(3,3);
+    Eigen::Matrix<T, 3, 1> t_lw = T_lw.topRightCorner(3,1);
+
+    Eigen::Matrix<T, 4, 1> ground_plane_coeff_temp = ground_plane_coeff.cast<T>().template segment<4>(0);
+    // ground_plane_coeff.cast<T>().template segment<4>(0);
+    Eigen::Matrix<T, 4, 1> local_ground_plane;
+    local_ground_plane.template segment<3>(0) = R_lw * init_ground_plane_coeff.cast<T>().template segment<3>(0);
+    local_ground_plane.template segment<1>(3) = init_ground_plane_coeff.cast<T>().template segment<1>(3) - 
+                                                t_lw.transpose() * local_ground_plane.template segment<3>(0);
+    eResiduals = livox_slam_ware::ominus(ground_plane_coeff_temp, local_ground_plane);
 		Eigen::Matrix<T, 3, 1> euler_angles;
 		livox_slam_ware::R2ypr(SO3_Ri.matrix(), euler_angles);
 		Eigen::Matrix<T, 1, 1> rP_i_Ground = PRi.template segment<1>(2);
-		eResiduals.template segment<2>(0) = euler_angles.template segment<2>(1);
-		eResiduals.template segment<1>(2) = rP_i_Ground;
+		// eResiduals.template segment<2>(0) = euler_angles.template segment<2>(1);
+		// eResiduals.template segment<1>(2) = rP_i_Ground;
 
 		eResiduals.applyOnTheLeft(sqrt_information.template cast<T>());
 		// std::cout << "ground eResiduals = " << std::endl << eResiduals[0] << std::endl << eResiduals[1] << std::endl;
-	    // static long long count = 0;
-	    // if (count % 300 == 0) {
-		//     std::cout << "ground eResiduals = " << std::endl << eResiduals << std::endl << std::endl;
-		//     count = 0;
-	    // }
-	    // count++;
+	    static long long count = 0;
+	    if (count % 300 == 0) {
+		    std::cout << "eResiduals = " << std::endl << eResiduals << std::endl << std::endl;
+		    count = 0;
+	    }
+	    count++;
 		return true;
 	}
 
-	static ceres::CostFunction *Create() {
+	static ceres::CostFunction *Create(Eigen::VectorXf ground_plane_coeff) {
 		return (new ceres::AutoDiffCostFunction<Cost_NavState_PR_Ground, 3, 6>(
-						new Cost_NavState_PR_Ground()));
+						new Cost_NavState_PR_Ground(ground_plane_coeff)));
 	}
+  Eigen::VectorXf ground_plane_coeff;
 	static Eigen::Matrix<double, 3, 3> sqrt_information;
+  static Eigen::VectorXf init_ground_plane_coeff;
 };
 
 /** \brief Ceres Cost Funtion between Lidar Pose and IMU Preintegration
