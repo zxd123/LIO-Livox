@@ -355,12 +355,12 @@ struct Cost_NavState_PR_Ground
 
 		eResiduals.applyOnTheLeft(sqrt_information.template cast<T>());
 		// std::cout << "ground eResiduals = " << std::endl << eResiduals[0] << std::endl << eResiduals[1] << std::endl;
-	    static long long count = 0;
-	    if (count % 300 == 0) {
-		    std::cout << "eResiduals = " << std::endl << eResiduals << std::endl << std::endl;
-		    count = 0;
-	    }
-	    count++;
+	    // static long long count = 0;
+	    // if (count % 300 == 0) {
+		  //   std::cout << "eResiduals = " << std::endl << eResiduals << std::endl << std::endl;
+		  //   count = 0;
+	    // }
+	    // count++;
 		return true;
 	}
 

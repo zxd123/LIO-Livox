@@ -25,7 +25,7 @@ std::mutex _mutexLidarQueue;
 std::queue<sensor_msgs::PointCloud2ConstPtr> _lidarMsgQueue;
 std::mutex _mutexIMUQueue;
 std::queue<sensor_msgs::ImuConstPtr> _imuMsgQueue;
-Eigen::Matrix4d exTlb;
+Eigen::Matrix4d exTlb = Eigen::Matrix4d::Identity();
 Eigen::Matrix3d exRlb, exRbl;
 Eigen::Vector3d exPlb, exPbl;
 Eigen::Vector3d GravityVector;
@@ -205,7 +205,26 @@ void ConvertPointCloudFromOdometerToGround(pcl::PointCloud<PointType>::Ptr& clou
     cloud->points[i].normal_x = 1.0;
   }
 }
-
+/** \brief Convert the lidar point cloud from the lidar to the IMU coordinate system
+  * \param[in] pi: lidar point need to be convert
+  * \param[in] po: lidar point after convert
+  * \param[in] exTbl: transformation from lidar to imu
+  */
+void ConvertPointFromLidarToIMU(PointType const * const pi, 
+                                PointType * const po, 
+                                const Eigen::Matrix4d& exTbl){
+  Eigen::Vector3d pin, pout;
+  pin[0] = pi->x;
+  pin[1] = pi->y;
+  pin[2] = pi->z;
+  pout = exTbl.topLeftCorner(3,3) * pin + exTbl.topRightCorner(3,1);
+  po->x = pout[0];
+  po->y = pout[1];
+  po->z = pout[2];
+  po->intensity = pi->intensity;
+  po->normal_z = pi->normal_z;
+  po->normal_y = pi->normal_y;
+}
 
 bool TryMAPInitialization() {
 
@@ -394,6 +413,7 @@ bool TryMAPInitialization() {
 }
 
 
+
 /** \brief Mapping main thread
   */
 void process(){
@@ -554,14 +574,20 @@ void process(){
       int laserCloudFullResNum = lidar_list->front().laserCloud->points.size();
       pcl::PointCloud<PointType>::Ptr laserCloudAfterEstimate(new pcl::PointCloud<PointType>());
       laserCloudAfterEstimate->reserve(laserCloudFullResNum);
+
+      Eigen::Matrix4d exTbl = exTlb.inverse();
+      // std::cout << "exTbl = " << exTbl << std::endl;
       for (int i = 0; i < laserCloudFullResNum; i++) {
         PointType temp_point;
         auto &p = lidar_list->front().laserCloud->points[i];
-        if (std::fabs(p.normal_y + 1.0) < 1e-5) {
-          MAP_MANAGER::pointAssociateToMap(&lidar_list->front().laserCloud->points[i], &temp_point, transformTobeMapped);
-          laserCloudAfterEstimate->push_back(temp_point);
-        }
+        // if (std::fabs(p.normal_y + 1.0) < 1e-5) {
+        // MAP_MANAGER::pointAssociateToMap(&lidar_list->front().laserCloud->points[i], &temp_point, transformAftMapped);
+        ConvertPointFromLidarToIMU(&lidar_list->front().laserCloud->points[i], &temp_point, exTbl);
+        // temp_point = lidar_list->front().laserCloud->points[i];
+        laserCloudAfterEstimate->push_back(temp_point);
+        // }
       }
+      // std::cout << "laserCloudAfterEstimate size = " << laserCloudAfterEstimate->size() << std::endl;
       // laserCloudAfterEstimate = estimator->get_init_ground_cloud();
       sensor_msgs::PointCloud2 laserCloudMsg;
       pcl::toROSMsg(*laserCloudAfterEstimate, laserCloudMsg);

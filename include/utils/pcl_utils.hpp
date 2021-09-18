@@ -4,7 +4,6 @@
 #include <pcl/sample_consensus/ransac.h>
 #include <pcl/sample_consensus/sac_model_plane.h>
 namespace livox_slam_ware {
-// typedef pcl::PointXYZINormal PointType;
 /*
  * @brief Get the plane coeffs.
  */
